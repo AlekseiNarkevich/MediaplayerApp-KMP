@@ -105,6 +105,10 @@ jobs:
           make -j"$(nproc)"
           DEPLOY_JSON="$(ls ./*-deployment-settings.json | head -n 1)"
           if [ -z "$DEPLOY_JSON" ]; then echo "Deployment settings JSON not found"; exit 1; fi
+          APP_SO="$(ls ./lib*_arm64-v8a.so | head -n 1)"
+          if [ -z "$APP_SO" ]; then echo "Application .so not found in build dir"; ls -la; exit 1; fi
+          mkdir -p android-build/libs/arm64-v8a
+          cp "$APP_SO" android-build/libs/arm64-v8a/
           ANDROID_DEPLOY_QT="$(qmake -query QT_HOST_BINS)/androiddeployqt"
           if [ ! -x "$ANDROID_DEPLOY_QT" ]; then echo "androiddeployqt not found at $ANDROID_DEPLOY_QT"; exit 1; fi
           "$ANDROID_DEPLOY_QT" --input "$DEPLOY_JSON" --output android-build --android-platform android-34 --deployment bundled --gradle
