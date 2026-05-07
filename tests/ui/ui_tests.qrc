@@ -1,0 +1,6 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>tst_ui_smoke.qml</file>
+    </qresource>
+</RCC>

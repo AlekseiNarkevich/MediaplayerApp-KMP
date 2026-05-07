@@ -1,0 +1,122 @@
+# C++ objects and libs
+*.slo
+*.lo
+*.o
+*.a
+*.la
+*.lai
+*.so
+*.so.*
+*.dll
+*.dylib
+
+# Qt-es
+object_script.*.Release
+object_script.*.Debug
+*_plugin_import.cpp
+/.qmake.cache
+/.qmake.stash
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+Makefile*
+*build-*
+build/
+build-*/
+build_*/
+*build*/
+*.qm
+*.prl
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+__pycache__/
+
+# Qt unit tests
+target_wrapper.*
+
+# QtCreator
+*.autosave
+
+# QtCreator Qml
+*.qmlproject.user
+*.qmlproject.user.*
+
+# QtCreator CMake
+CMakeLists.txt.user*
+
+# QtCreator 4.8< compilation database
+compile_commands.json
+
+# QtCreator local machine specific files for imported projects
+*creator.user*
+
+*_qmlcache.qrc
+.qtc_clangd/
+
+# ===== WebAssembly build artifacts =====
+# Основной сценарий: out-of-source сборка в build-wasm (как в инструкции запуска).
+/build-wasm/
+/build-wasm-*/
+
+# Редкий сценарий: in-source wasm-сборка в корне проекта.
+/MediaPlayerApp.html
+/MediaPlayerApp.js
+/MediaPlayerApp.wasm
+/MediaPlayerApp.data
+/MediaPlayerApp.worker.js
+/MediaPlayerApp.wasm.map
+/MediaPlayerApp.js.symbols
+/qtloader.js
+/qtlogo.svg
+
+# ===== Дополнения для Android =====
+# Android build output
+/android-build/
+/android/assets/
+/android/libs/
+/android/obj/
+/android/bin/
+/*.apk
+/*.aab
+
+# Gradle (если используется)
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+*.iml
+local.properties
+.idea/
+
+# Keystore (никогда не коммитить!)
+*.keystore
+*.jks
+*.key
+
+# NDK temporary files
+*.lst
+*.tmp
+
+# ===== Общие временные файлы =====
+# IDE
+.vscode/
+.idea/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log

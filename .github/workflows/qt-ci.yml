@@ -1,0 +1,170 @@
+name: Qt Cross Platform CI
+
+# CI собирает проект для целевых платформ лабы:
+# - Desktop/Linux (с прогоном тестов)
+# - Android arm64-v8a
+# - iOS simulator
+# - WebAssembly single-thread
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  # [Desktop/Linux] Основная проверка качества:
+  # сборка + генерация переводов + unit/integration/ui тесты.
+  linux-build-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libpulse-dev
+
+      - name: Install Qt (Desktop Linux GCC 64)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.1'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'linux_gcc_64'
+          modules: 'qtmultimedia'
+
+      - name: Build desktop app
+        run: |
+          qmake MediaPlayerApp.pro
+          make -j"$(nproc)"
+
+      - name: Generate translations
+        run: lrelease MediaPlayerApp.pro
+
+      - name: Run unit tests
+        run: |
+          cd tests/unit
+          qmake unit_tests.pro
+          make -j"$(nproc)"
+          ./unit_tests
+
+      - name: Run integration tests
+        run: |
+          cd tests/integration
+          qmake integration_tests.pro
+          make -j"$(nproc)"
+          ./integration_tests
+
+      - name: Run UI tests
+        run: |
+          cd tests/ui
+          qmake ui_tests.pro
+          make -j"$(nproc)"
+          ./ui_tests -platform offscreen
+
+  # [Android] Сборка APK для arm64-v8a через androiddeployqt + Gradle.
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK/NDK tools
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
+
+      - name: Install Qt (Android arm64-v8a)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.1'
+          host: 'linux'
+          target: 'android'
+          arch: 'android_arm64_v8a'
+          modules: 'qtmultimedia'
+
+      - name: Build Android APK
+        env:
+          ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_LATEST_HOME }}
+        run: |
+          qmake MediaPlayerApp.pro -spec android-clang CONFIG+=release ANDROID_ABIS=arm64-v8a
+          make -j"$(nproc)"
+          for f in ./*-deployment-settings.json; do DEPLOY_JSON="$f"; break; done
+          if [ -z "$DEPLOY_JSON" ]; then echo "Deployment settings JSON not found"; exit 1; fi
+          androiddeployqt --input "$DEPLOY_JSON" --output android-build --android-platform android-34 --gradle
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android-build/build/outputs/apk/**/*.apk
+
+  # [iOS] Сборка simulator-версии на macOS (без подписи для App Store).
+  ios-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt (iOS)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.1'
+          host: 'mac'
+          target: 'ios'
+          modules: 'qtmultimedia'
+
+      - name: Build iOS app (simulator)
+        run: |
+          qmake MediaPlayerApp.pro -spec macx-ios-clang CONFIG+=release CONFIG+=simulator
+          make -j"$(sysctl -n hw.ncpu)"
+
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: |
+            *.app
+            build/**/*.app
+
+  # [WebAssembly] Сборка web-бандла (html/js/wasm) и публикация артефактов.
+  # Логика соответствует локальной команде:
+  # qmake ... -spec wasm-emscripten CONFIG+=release && make
+  wasm-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt (WASM singlethread)
+        uses: jurplel/install-qt-action@v4
+        with:
+          # Синхронизировано с локальным набором из инструкции пользователя (Qt 6.5.3 wasm_singlethread).
+          version: '6.5.3'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'wasm_singlethread'
+          modules: 'qtmultimedia'
+
+      - name: Build WebAssembly bundle
+        run: |
+          qmake MediaPlayerApp.pro -spec wasm-emscripten CONFIG+=release
+          make -j"$(nproc)"
+
+      - name: Upload wasm artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-build
+          path: |
+            *.html
+            *.js
+            *.wasm
+            *.data
+            *.worker.js
+            *.wasm.map
+            *.js.symbols
+            qtloader.js
+            qtlogo.svg
