@@ -99,19 +99,21 @@ jobs:
 
       - name: Build Android APK
         run: |
-          qmake MediaPlayerApp.pro -spec android-clang CONFIG+=release ANDROID_ABIS=arm64-v8a
+          mkdir -p build-android
+          cd build-android
+          qmake ../MediaPlayerApp.pro -spec android-clang CONFIG+=release ANDROID_ABIS=arm64-v8a
           make -j"$(nproc)"
           DEPLOY_JSON="$(ls ./*-deployment-settings.json | head -n 1)"
           if [ -z "$DEPLOY_JSON" ]; then echo "Deployment settings JSON not found"; exit 1; fi
           ANDROID_DEPLOY_QT="$(qmake -query QT_HOST_BINS)/androiddeployqt"
           if [ ! -x "$ANDROID_DEPLOY_QT" ]; then echo "androiddeployqt not found at $ANDROID_DEPLOY_QT"; exit 1; fi
-          "$ANDROID_DEPLOY_QT" --input "$DEPLOY_JSON" --output android-build --android-platform android-34 --gradle
+          "$ANDROID_DEPLOY_QT" --input "$DEPLOY_JSON" --output android-build --android-platform android-34 --deployment bundled --gradle
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: android-build/build/outputs/apk/**/*.apk
+          path: build-android/android-build/build/outputs/apk/**/*.apk
 
   # [iOS] Сборка simulator-версии на macOS (без подписи для App Store).
   ios-build:
