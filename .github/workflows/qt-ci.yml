@@ -37,6 +37,8 @@ jobs:
           make -j"$(nproc)"
 
       - name: Run unit tests
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: |
           cd tests/unit
           qmake unit_tests.pro
@@ -44,6 +46,8 @@ jobs:
           ./unit_tests
 
       - name: Run integration tests
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: |
           cd tests/integration
           qmake integration_tests.pro
@@ -51,6 +55,8 @@ jobs:
           ./integration_tests
 
       - name: Run UI tests
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: |
           cd tests/ui
           qmake ui_tests.pro
@@ -97,7 +103,9 @@ jobs:
           make -j"$(nproc)"
           DEPLOY_JSON="$(ls ./*-deployment-settings.json | head -n 1)"
           if [ -z "$DEPLOY_JSON" ]; then echo "Deployment settings JSON not found"; exit 1; fi
-          androiddeployqt --input "$DEPLOY_JSON" --output android-build --android-platform android-34 --gradle
+          ANDROID_DEPLOY_QT="$(qmake -query QT_HOST_BINS)/androiddeployqt"
+          if [ ! -x "$ANDROID_DEPLOY_QT" ]; then echo "androiddeployqt not found at $ANDROID_DEPLOY_QT"; exit 1; fi
+          "$ANDROID_DEPLOY_QT" --input "$DEPLOY_JSON" --output android-build --android-platform android-34 --gradle
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
@@ -114,7 +122,8 @@ jobs:
       - name: Install Qt (iOS)
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.1'
+          # Для стабильной линковки QtMultimedia в CI используем ту же мажор/минор ветку, что и локально.
+          version: '6.5.3'
           host: 'mac'
           target: 'ios'
           modules: 'qtmultimedia'
