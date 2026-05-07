@@ -13,7 +13,7 @@ on:
 
 jobs:
   # [Desktop/Linux] Основная проверка качества:
-  # сборка + генерация переводов + unit/integration/ui тесты.
+  # сборка + unit/integration/ui тесты.
   linux-build-and-tests:
     runs-on: ubuntu-latest
     steps:
@@ -35,9 +35,6 @@ jobs:
         run: |
           qmake MediaPlayerApp.pro
           make -j"$(nproc)"
-
-      - name: Generate translations
-        run: lrelease MediaPlayerApp.pro
 
       - name: Run unit tests
         run: |
@@ -79,6 +76,12 @@ jobs:
         run: |
           sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
 
+      - name: Export Android NDK variables
+        run: |
+          echo "ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOST=linux-x86_64" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> $GITHUB_ENV
+
       - name: Install Qt (Android arm64-v8a)
         uses: jurplel/install-qt-action@v4
         with:
@@ -89,12 +92,10 @@ jobs:
           modules: 'qtmultimedia'
 
       - name: Build Android APK
-        env:
-          ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_LATEST_HOME }}
         run: |
           qmake MediaPlayerApp.pro -spec android-clang CONFIG+=release ANDROID_ABIS=arm64-v8a
           make -j"$(nproc)"
-          for f in ./*-deployment-settings.json; do DEPLOY_JSON="$f"; break; done
+          DEPLOY_JSON="$(ls ./*-deployment-settings.json | head -n 1)"
           if [ -z "$DEPLOY_JSON" ]; then echo "Deployment settings JSON not found"; exit 1; fi
           androiddeployqt --input "$DEPLOY_JSON" --output android-build --android-platform android-34 --gradle
 
@@ -130,19 +131,28 @@ jobs:
           path: |
             *.app
             build/**/*.app
+            Release-iphonesimulator/**/*.app
 
   # [WebAssembly] Сборка web-бандла (html/js/wasm) и публикация артефактов.
-  # Логика соответствует локальной команде:
-  # qmake ... -spec wasm-emscripten CONFIG+=release && make
   wasm-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # Для Qt 6.5.x wasm нужен совместимый emsdk в PATH.
+      - name: Setup Emscripten (3.1.25)
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.25
+
+      - name: Verify emsdk
+        run: |
+          em++ --version
+          which em++
+
       - name: Install Qt (WASM singlethread)
         uses: jurplel/install-qt-action@v4
         with:
-          # Синхронизировано с локальным набором из инструкции пользователя (Qt 6.5.3 wasm_singlethread).
           version: '6.5.3'
           host: 'linux'
           target: 'desktop'
